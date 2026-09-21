@@ -1,7 +1,7 @@
 import type { Theme } from "@earendil-works/pi-coding-agent";
 import { Text } from "@earendil-works/pi-tui";
 import { sanitizeTerminalText } from "./sanitize.ts";
-import type { Task, TaskOperation, TaskOperationResult, TaskStatus } from "./types.ts";
+import type { Task, TaskOperationResult, TaskStatus } from "./types.ts";
 
 const STATUS_FORMAT: ReadonlyArray<{
 	status: TaskStatus;
@@ -22,10 +22,20 @@ export function formatTaskList(tasks: readonly Task[]): string {
 		if (matching.length === 0) continue;
 		lines.push(heading);
 		for (const task of matching) {
-			lines.push(`  ${marker} ${task.id}: ${sanitizeTerminalText(task.title)}`);
+			lines.push(`  ${marker} ${sanitizeTerminalText(task.id)}: ${sanitizeTerminalText(task.title)}`);
 		}
 	}
 	return lines.join("\n");
+}
+
+function formatModelTaskList(tasks: readonly Task[]): string {
+	if (tasks.length === 0) return "No session tasks.";
+	return tasks
+		.map(
+			(task) =>
+				`${sanitizeTerminalText(task.id)}: ${sanitizeTerminalText(task.title)} [${sanitizeTerminalText(task.status)}]`,
+		)
+		.join("\n");
 }
 
 function taskFromResult(result: TaskOperationResult): Task {
@@ -41,40 +51,58 @@ function deletedIdFromResult(result: TaskOperationResult): string {
 export function formatToolContent(result: TaskOperationResult): string {
 	switch (result.action) {
 		case "list":
-			return formatTaskList(result.tasks);
+			return formatModelTaskList(result.tasks);
 		case "create": {
 			const task = taskFromResult(result);
-			return `Created session task ${task.id}: ${sanitizeTerminalText(task.title)}`;
+			return `Created session task ${sanitizeTerminalText(task.id)}: ${sanitizeTerminalText(task.title)}`;
 		}
 		case "update":
-			return `Updated session task ${taskFromResult(result).id}`;
+			return `Updated session task ${sanitizeTerminalText(taskFromResult(result).id)}`;
 		case "move":
-			return `Moved session task ${taskFromResult(result).id}`;
+			return `Moved session task ${sanitizeTerminalText(taskFromResult(result).id)}`;
 		case "delete":
-			return `Deleted session task ${deletedIdFromResult(result)}`;
+			return `Deleted session task ${sanitizeTerminalText(deletedIdFromResult(result))}`;
 		case "clear":
 			return result.changed ? "Cleared all session tasks" : "Session tasks already empty";
 	}
 }
 
-function formatCallText(args: TaskOperation): string {
+interface DisplayCall {
+	action?: string;
+	title?: string;
+	id?: string;
+}
+
+function formatCallText(args: DisplayCall): string {
 	switch (args.action) {
 		case "list":
 			return "List session tasks";
 		case "create":
-			return `Create session task: ${sanitizeTerminalText(args.title)}`;
+			return args.title === undefined
+				? "Create session task"
+				: `Create session task: ${sanitizeTerminalText(args.title)}`;
 		case "update":
-			return `Update session task ${args.id}`;
+			return args.id === undefined
+				? "Update session task"
+				: `Update session task ${sanitizeTerminalText(args.id)}`;
 		case "move":
-			return `Move session task ${args.id}`;
+			return args.id === undefined
+				? "Move session task"
+				: `Move session task ${sanitizeTerminalText(args.id)}`;
 		case "delete":
-			return `Delete session task ${args.id}`;
+			return args.id === undefined
+				? "Delete session task"
+				: `Delete session task ${sanitizeTerminalText(args.id)}`;
 		case "clear":
 			return "Clear session tasks";
+		case undefined:
+			return "Session task arguments pending";
+		default:
+			return `Session task action: ${sanitizeTerminalText(args.action)}`;
 	}
 }
 
-export function formatToolCall(args: TaskOperation, theme: Theme): Text {
+export function formatToolCall(args: DisplayCall, theme: Theme): Text {
 	return new Text(theme.fg("toolTitle", theme.bold(formatCallText(args))), 0, 0);
 }
 

@@ -99,7 +99,13 @@ export function applyTaskOperation(
 			const anchorId = operation.beforeId ?? operation.afterId;
 			if (anchorId === operation.id) {
 				const nextTasks = cloneTasks(tasks);
-				return { action: operation.action, changed: false, tasks: nextTasks, counts: countTasks(nextTasks) };
+				return {
+					action: operation.action,
+					changed: false,
+					tasks: nextTasks,
+					counts: countTasks(nextTasks),
+					task: { ...nextTasks[sourceIndex] },
+				};
 			}
 			const nextTasks = cloneTasks(tasks);
 			const [source] = nextTasks.splice(sourceIndex, 1);

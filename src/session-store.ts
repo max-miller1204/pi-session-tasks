@@ -72,6 +72,7 @@ function parseSnapshot(data: unknown, entryId: string): Task[] {
 
 export class SessionStore {
 	private tasks: Task[] = [];
+	private available = true;
 	private queue: Promise<unknown> = Promise.resolve();
 
 	constructor(
@@ -80,18 +81,26 @@ export class SessionStore {
 	) {}
 
 	reconstruct(entries: readonly SnapshotEntry[]): void {
+		this.available = false;
 		const latest = [...entries]
 			.reverse()
 			.find((entry) => entry.type === "custom" && entry.customType === SNAPSHOT_TYPE);
 		this.tasks = latest ? parseSnapshot(latest.data, latest.id ?? "unknown") : [];
+		this.available = true;
+	}
+
+	private assertAvailable(): void {
+		if (!this.available) throw new Error("Session task store unavailable after failed reconstruction");
 	}
 
 	getTasks(): Task[] {
+		this.assertAvailable();
 		return this.tasks.map((task) => ({ ...task }));
 	}
 
 	execute(operation: TaskOperation): Promise<TaskOperationResult> {
 		const next = this.queue.then(() => {
+			this.assertAvailable();
 			const result = applyTaskOperation(this.tasks, operation, this.createId);
 			if (result.changed) {
 				this.appendSnapshot(SNAPSHOT_TYPE, { version: SNAPSHOT_VERSION, tasks: result.tasks });

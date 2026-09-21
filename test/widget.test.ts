@@ -36,6 +36,13 @@ describe("TaskWidget", () => {
 		expect(lines.every((line) => visibleWidth(line) <= 16)).toBe(true);
 	});
 
+	it("keeps a complete ZWJ family immediately before the cutoff and omits one across it", () => {
+		const family = "👨‍👩‍👧‍👦";
+		const widget = new TaskWidget(() => [{ id: "a", title: `ab${family}xyzq`, status: "todo" }], theme);
+		expect(widget.render(9)[1]).toBe(`○ ab${family}...`);
+		expect(widget.render(8)[1]).toBe("○ ab...");
+	});
+
 	it("shows a summary when all tasks are complete", () => {
 		const widget = new TaskWidget(
 			() => [

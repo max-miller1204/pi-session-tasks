@@ -23,7 +23,7 @@ interface TaskContextPayload {
 }
 
 function jsonStringBytes(value: string): number {
-	return Buffer.byteLength(JSON.stringify(value), "utf8") - 2;
+	return Buffer.byteLength(JSON.stringify(value), "utf8");
 }
 
 function truncateJsonString(value: string, limit: number): string {
@@ -60,13 +60,13 @@ function serializePayload(tasks: ProjectedTask[], incompleteTaskCount: number): 
 	return `${CONTEXT_PREAMBLE}\n${JSON.stringify(payload)}`;
 }
 
-export function buildTaskContext(tasks: Task[]): string {
-	const fixedContent = serializePayload([], 0);
-	if (Buffer.byteLength(fixedContent, "utf8") > CONTEXT_LIMITS.totalBytes) {
-		throw new Error("Task context fixed content exceeds 4096 UTF-8 bytes.");
+export function buildTaskContext(tasks: Task[], totalBytes: number = CONTEXT_LIMITS.totalBytes): string {
+	const incompleteTasks = tasks.filter(({ status }) => status !== "done");
+	const fixedContent = serializePayload([], incompleteTasks.length);
+	if (Buffer.byteLength(fixedContent, "utf8") > totalBytes) {
+		throw new Error(`Task context fixed content exceeds ${totalBytes} UTF-8 bytes.`);
 	}
 
-	const incompleteTasks = tasks.filter(({ status }) => status !== "done");
 	if (incompleteTasks.length === 0) {
 		return "";
 	}
@@ -83,7 +83,7 @@ export function buildTaskContext(tasks: Task[]): string {
 		});
 
 	let content = serializePayload(projectedTasks, incompleteTasks.length);
-	while (Buffer.byteLength(content, "utf8") > CONTEXT_LIMITS.totalBytes) {
+	while (Buffer.byteLength(content, "utf8") > totalBytes) {
 		projectedTasks.pop();
 		content = serializePayload(projectedTasks, incompleteTasks.length);
 	}

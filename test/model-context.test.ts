@@ -30,7 +30,7 @@ describe("buildTaskContext", () => {
 		const payload = parseContext(content);
 		const projected = payload.incompleteTasks[0].title as string;
 		expect(projected).not.toContain("�");
-		expect(Buffer.byteLength(JSON.stringify(projected), "utf8") - 2).toBeLessThanOrEqual(
+		expect(Buffer.byteLength(JSON.stringify(projected), "utf8")).toBeLessThanOrEqual(
 			CONTEXT_LIMITS.taskTitleJsonBytes,
 		);
 		expect(Buffer.byteLength(content, "utf8")).toBeLessThanOrEqual(CONTEXT_LIMITS.totalBytes);
@@ -44,7 +44,7 @@ describe("buildTaskContext", () => {
 		const title = `${'"\\\u0001'.repeat(40)} suffix`;
 		const payload = parseContext(buildTaskContext([{ id: "st-1", title, status: "todo" }]));
 		const projected = payload.incompleteTasks[0].title as string;
-		expect(Buffer.byteLength(JSON.stringify(projected), "utf8") - 2).toBeLessThanOrEqual(
+		expect(Buffer.byteLength(JSON.stringify(projected), "utf8")).toBeLessThanOrEqual(
 			CONTEXT_LIMITS.taskTitleJsonBytes,
 		);
 		expect(projected).toContain("… [truncated]");
@@ -53,7 +53,7 @@ describe("buildTaskContext", () => {
 	it("keeps combining sequences as complete graphemes", () => {
 		const grapheme = "e\u0301";
 		const payload = parseContext(
-			buildTaskContext([{ id: "st-1", title: grapheme.repeat(100), status: "todo" }]),
+			buildTaskContext([{ id: "st-1", title: grapheme.repeat(85), status: "todo" }]),
 		);
 		const projected = payload.incompleteTasks[0].title as string;
 		const beforeMarker = projected.slice(0, -"… [truncated]".length);
@@ -62,7 +62,7 @@ describe("buildTaskContext", () => {
 	});
 
 	it("reports title truncation with JSON-style field paths", () => {
-		const payload = parseContext(buildTaskContext([{ id: "st-1", title: "x".repeat(300), status: "todo" }]));
+		const payload = parseContext(buildTaskContext([{ id: "st-1", title: "x".repeat(256), status: "todo" }]));
 		expect(payload.truncatedFields).toEqual(["incompleteTasks[0].title"]);
 	});
 
@@ -77,17 +77,31 @@ describe("buildTaskContext", () => {
 		expect(payload).not.toHaveProperty("omittedIncompleteTaskCount");
 	});
 
-	it("drops one projected task when the complete payload exceeds 4096 bytes", () => {
-		const oversizedStatus = "x".repeat(500);
-		const tasks = Array.from({ length: 8 }, (_, index) => ({
+	it("counts quotation marks at the exact title boundary", () => {
+		for (const length of [190, 191, 192]) {
+			const payload = parseContext(
+				buildTaskContext([{ id: "a", title: "x".repeat(length), status: "todo" }]),
+			);
+			const title = payload.incompleteTasks[0].title;
+			expect(Buffer.byteLength(JSON.stringify(title))).toBeLessThanOrEqual(192);
+			expect(title.includes("[truncated]")).toBe(length > 190);
+		}
+	});
+
+	it("prunes valid tasks to a pure byte budget and reports omissions", () => {
+		const tasks: Task[] = Array.from({ length: 8 }, (_, index) => ({
 			id: `st-${index}`,
-			title: `Task ${index}`,
-			status: oversizedStatus,
-		})) as unknown as Task[];
-		const content = buildTaskContext(tasks);
+			title: "x".repeat(190),
+			status: "doing",
+		}));
+		const content = buildTaskContext(tasks, 800);
 		const payload = parseContext(content);
-		expect(payload.incompleteTasks).toHaveLength(7);
-		expect(payload.omittedIncompleteTaskCount).toBe(1);
-		expect(Buffer.byteLength(content, "utf8")).toBeLessThanOrEqual(CONTEXT_LIMITS.totalBytes);
+		expect(payload.incompleteTasks.length).toBeGreaterThan(0);
+		expect(payload.incompleteTasks.length).toBeLessThan(8);
+		expect(payload.omittedIncompleteTaskCount).toBe(8 - payload.incompleteTasks.length);
+		expect(Buffer.byteLength(content)).toBeLessThanOrEqual(800);
+		expect(() => buildTaskContext(tasks, 1)).toThrow("fixed content");
+		const emptyPayloadBudget = Buffer.byteLength(`${CONTEXT_PREAMBLE}\n{"incompleteTasks":[]}`);
+		expect(() => buildTaskContext(tasks, emptyPayloadBudget)).toThrow("fixed content");
 	});
 });

@@ -84,6 +84,32 @@ describe("tool formatting", () => {
 		expect(text).not.toContain("more");
 	});
 
+	it("keeps interleaved statuses in canonical model list order", () => {
+		const text = formatToolContent(result("list", tasks));
+		const ids = [...text.matchAll(/st-\d+/g)].map(([id]) => id);
+		expect(ids).toEqual(tasks.map(({ id }) => id));
+		for (const task of tasks) expect(text).toContain(task.status);
+	});
+
+	it("sanitizes IDs in commands, calls, and all result actions without changing stored IDs", () => {
+		const id = "\u001b[31mbad\n\u202eid";
+		const task: Task = { id, title: "Title", status: "todo" };
+		const outputs = [formatTaskList([task])];
+		for (const action of ["update", "move", "delete"] as const) {
+			outputs.push(renderText(formatToolCall({ action, id }, theme)));
+		}
+		for (const action of ["list", "create", "update", "move", "delete"] as const) {
+			const value = result(action, [task], { task, deletedTaskId: id });
+			outputs.push(formatToolContent(value), renderText(formatToolResult(value, true, theme)));
+		}
+		for (const text of outputs) {
+			expect(text).not.toContain("\u001b");
+			expect(text).not.toContain("\u202e");
+			expect(text).not.toContain("bad\n");
+		}
+		expect(task.id).toBe(id);
+	});
+
 	it("returns concise mutation content for the model", () => {
 		const task = { id: "st-1", title: "Write tests", status: "todo" } as const;
 		expect(formatToolContent(result("create", [task], { task }))).toBe(

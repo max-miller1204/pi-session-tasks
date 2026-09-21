@@ -1,10 +1,29 @@
-import type { ExtensionAPI, ExtensionContext, ToolDefinition } from "@earendil-works/pi-coding-agent";
+import type { ExtensionAPI, ExtensionContext, Theme, ToolDefinition } from "@earendil-works/pi-coding-agent";
 import { Value } from "typebox/value";
 import { describe, expect, it, vi } from "vitest";
 import extension from "../src/extension.ts";
 import { CONTEXT_TYPE } from "../src/model-context.ts";
 import { SNAPSHOT_TYPE, type SnapshotEntry } from "../src/session-store.ts";
 import { type TodoParams, TodoParamsSchema, toTaskOperation } from "../src/tool-schema.ts";
+
+const theme = {
+	fg: (_color: string, text: string) => text,
+	bold: (text: string) => text,
+} as unknown as Theme;
+const renderContext: Parameters<NonNullable<ToolDefinition<typeof TodoParamsSchema>["renderCall"]>>[2] = {
+	args: {} as TodoParams,
+	toolCallId: "call",
+	invalidate() {},
+	lastComponent: undefined,
+	state: {},
+	cwd: process.cwd(),
+	executionStarted: false,
+	argsComplete: false,
+	isPartial: false,
+	expanded: false,
+	showImages: false,
+	isError: false,
+};
 
 type Handler = (event: unknown, ctx: ExtensionContext) => unknown;
 
@@ -163,6 +182,88 @@ describe("extension registration and todo tool", () => {
 		}
 		expect(Object.keys(created.details as object).sort()).toEqual(["action", "changed", "counts", "task"]);
 	});
+});
+
+describe("final review regressions", () => {
+	it.each([
+		{},
+		{ action: "create" },
+		{ action: "update", id: "a" },
+		{ action: "move" },
+		{ action: "delete" },
+		{ action: "\u001b[31munknown" },
+	])("renders partial call arguments %j safely", (args) => {
+		const component = harness().tool.renderCall?.(args as TodoParams, theme, renderContext);
+		expect(component).toBeDefined();
+		expect(component?.render(200).join("\n")).not.toContain("\u001b");
+	});
+
+	it.each(["error", "partial"])("renders %s results without details safely", (state) => {
+		const component = harness().tool.renderResult?.(
+			{ content: [{ type: "text", text: "\u001b[31mInvalid\n\u202eid" }], details: undefined },
+			{ expanded: false, isPartial: state === "partial" },
+			theme,
+			{ ...renderContext, isError: state === "error" },
+		);
+		expect(component).toBeDefined();
+		const text = component?.render(200).join("\n");
+		expect(text).not.toContain("\u001b");
+		expect(text).not.toContain("\u202e");
+		if (state === "error") expect(text).toContain("Invalid");
+	});
+
+	it("rejects a complete successful result without details", () => {
+		expect(() =>
+			harness().tool.renderResult?.(
+				{ content: [], details: undefined },
+				{ expanded: false, isPartial: false },
+				theme,
+				renderContext,
+			),
+		).toThrow("requires details");
+	});
+
+	it.each(["beforeId", "afterId"])(
+		"self-placement with %s succeeds without a snapshot",
+		async (placement) => {
+			const h = harness();
+			const task = { id: "a", title: "A", status: "todo" };
+			const a = context("a", [snapshot("one", [task])], false);
+			await start(h, a.ctx);
+			const result = await execute(h, a.ctx, { action: "move", id: "a", [placement]: "a" });
+			expect(result.details).toMatchObject({ changed: false, task });
+			expect(result.content[0]).toMatchObject({ text: "Moved session task a" });
+			expect(h.appended).toEqual([]);
+		},
+	);
+
+	it.each(["session_start", "session_tree"])(
+		"blocks continuation after failed %s and recovers",
+		async (event) => {
+			const h = harness();
+			const a = context("a", [], false);
+			if (event === "session_tree") {
+				await start(h, a.ctx);
+				await execute(h, a.ctx, { action: "create", title: "Stale" });
+			}
+			a.branch.push({ type: "custom", id: "bad", customType: SNAPSHOT_TYPE, data: { version: 2 } });
+			await expect(h.handlers.get(event)?.({}, a.ctx)).rejects.toThrow("Unsupported");
+			const writes = h.appended.length;
+			for (const params of [{ action: "list" }, { action: "create", title: "Wrong" }]) {
+				await expect(execute(h, a.ctx, params)).rejects.toThrow("unavailable");
+			}
+			await expect(h.command.handler("", a.ctx)).rejects.toThrow("unavailable");
+			await expect(h.handlers.get("context")?.({ messages: [] }, a.ctx)).rejects.toThrow("unavailable");
+			expect(h.appended).toHaveLength(writes);
+			a.branch.splice(0);
+			await h.handlers.get(event)?.({}, a.ctx);
+			expect((await execute(h, a.ctx, { action: "list" })).content[0]).toMatchObject({
+				text: "No session tasks.",
+			});
+			await execute(h, a.ctx, { action: "create", title: "Recovered" });
+			expect(h.appended).toHaveLength(writes + 1);
+		},
+	);
 });
 
 describe("session lifecycle", () => {

@@ -1,6 +1,8 @@
 import type { ExtensionAPI, ExtensionContext, Theme } from "@earendil-works/pi-coding-agent";
+import { Text } from "@earendil-works/pi-tui";
 import { formatTaskList, formatToolCall, formatToolContent, formatToolResult } from "./format.ts";
 import { buildTaskContext, CONTEXT_TYPE } from "./model-context.ts";
+import { sanitizeTerminalText } from "./sanitize.ts";
 import { SessionStore } from "./session-store.ts";
 import { TODO_PROMPT_GUIDELINES, type TodoParams, TodoParamsSchema, toTaskOperation } from "./tool-schema.ts";
 import type { TaskOperationResult } from "./types.ts";
@@ -79,9 +81,18 @@ export default function sessionTasksExtension(pi: ExtensionAPI): void {
 			};
 		},
 		renderCall(args, theme) {
-			return formatToolCall(toTaskOperation(args), theme);
+			return formatToolCall(args, theme);
 		},
-		renderResult(result, { expanded }, theme) {
+		renderResult(result, { expanded, isPartial }, theme, context) {
+			if (context.isError) {
+				const text = result.content
+					.filter((item) => item.type === "text")
+					.map((item) => sanitizeTerminalText(item.text))
+					.join("\n");
+				return new Text(theme.fg("error", text), 0, 0);
+			}
+			if (isPartial) return new Text(theme.fg("muted", "Session task operation in progress"), 0, 0);
+			if (!result.details) throw new Error("Successful session task result requires details");
 			return formatToolResult(result.details as TaskOperationResult, expanded, theme);
 		},
 	});
