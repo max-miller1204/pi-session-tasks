@@ -4,7 +4,12 @@ import { describe, expect, it, vi } from "vitest";
 import extension from "../src/extension.ts";
 import { CONTEXT_TYPE } from "../src/model-context.ts";
 import { SNAPSHOT_TYPE, type SnapshotEntry } from "../src/session-store.ts";
-import { type TodoParams, TodoParamsSchema, toTaskOperation } from "../src/tool-schema.ts";
+import {
+	TODO_PROMPT_GUIDELINES,
+	type TodoParams,
+	TodoParamsSchema,
+	toTaskOperation,
+} from "../src/tool-schema.ts";
 
 const theme = {
 	fg: (_color: string, text: string) => text,
@@ -128,11 +133,17 @@ describe("extension registration and todo tool", () => {
 			"delete",
 			"clear",
 		]);
-		expect((TodoParamsSchema.properties.status as unknown as { enum: string[] }).enum).toEqual([
-			"todo",
-			"doing",
-			"done",
-		]);
+		const statusSchema = TodoParamsSchema.properties.status as unknown as {
+			description?: string;
+			enum: string[];
+		};
+		expect(statusSchema.enum).toEqual(["todo", "doing", "done"]);
+		expect(statusSchema.description).toBe(
+			"New status for update only. Do not send status for create; new tasks always start as todo.",
+		);
+		expect(TODO_PROMPT_GUIDELINES).toContain(
+			"Create calls use action and title, with optional beforeId or afterId. Do not send status; new tasks start as todo.",
+		);
 		for (const value of [
 			{ action: "list" },
 			{ action: "create", title: "Write tests", beforeId: "a" },
