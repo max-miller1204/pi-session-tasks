@@ -68,6 +68,8 @@ interface Task {
 
 The task array defines canonical order. A task keeps the same ID when its title, status, or position changes.
 
+A stored title must be no more than 256 UTF-8 bytes. One session can contain at most 100 tasks. These limits keep complete list results bounded.
+
 More than one task can have `doing` status. This supports parallel work.
 
 ## Model tool
@@ -132,7 +134,7 @@ The guidance will not require exactly one doing task.
 
 Each successful mutation appends a complete version 1 snapshot as a Pi custom entry.
 
-The custom entry type is unique to `pi-session-tasks`. The extension does not read Stepstone or `rpiv-todo` entries.
+The custom entry type is `pi-session-tasks-snapshot`. The extension does not read Stepstone or `rpiv-todo` entries.
 
 The store reconstructs the latest supported snapshot on the active branch. A branch with no snapshot has an empty task list.
 
@@ -172,12 +174,14 @@ The extension does not use asynchronous module loading, project reads, network a
 
 Before each model request, the extension removes its prior request-only task message and adds one current projection when unfinished tasks exist.
 
+The request-only custom message type is `pi-session-tasks-context`.
+
 The projection contains:
 
 - Unfinished tasks only.
 - Canonical order.
 - At most eight tasks.
-- A bounded title for each task.
+- At most 192 JSON-encoded UTF-8 bytes for each projected title.
 - The count of omitted unfinished tasks.
 - A warning that task titles are untrusted data and not instructions.
 
@@ -185,7 +189,7 @@ The extension encodes task state as JSON. It preserves Unicode grapheme boundari
 
 Completed tasks remain available through `todo list` and `/tasks`. They do not consume recurring model context.
 
-The complete context message has a fixed UTF-8 byte limit. Construction fails loudly if fixed content cannot fit within that limit.
+The complete context message has a 4096-byte UTF-8 limit. Construction fails loudly if fixed content cannot fit within that limit.
 
 ## Widget
 
@@ -210,7 +214,7 @@ The command reports an empty list clearly. It does not open an editor or registe
 
 The extension defines compact `renderCall` and `renderResult` functions.
 
-The interactive transcript shows the action, target, and concise outcome. Structured tool details retain the operation result and current task state needed by the model.
+The interactive transcript shows the action, target, and concise outcome. Mutation details contain the affected task and status counts. List details contain the complete ordered list. Mutation results do not repeat the complete list.
 
 ## Terminal safety
 
@@ -230,6 +234,8 @@ Sanitization removes terminal control sequences and unsafe control characters. S
 The extension rejects:
 
 - Blank titles.
+- Titles longer than 256 UTF-8 bytes.
+- Creation when the session already has 100 tasks.
 - Unknown task IDs.
 - Unknown anchor IDs.
 - Both `beforeId` and `afterId`.
@@ -272,6 +278,7 @@ Use test-driven development.
 Tests must cover:
 
 - Every action and validation rule.
+- Stored title and task-count limits.
 - Stable insertion and movement.
 - Semantic no-ops.
 - Serialized concurrent mutations.
@@ -295,6 +302,6 @@ Implementation creates only `pi-session-tasks`.
 
 Stepstone is out of scope and remains unchanged.
 
-After package verification, replace `npm:@juicesharp/rpiv-todo` with the new package in the user's Pi package configuration. Do not run both extensions because both register `todo`.
+After package verification, use the user's `dots` workflow to replace `npm:@juicesharp/rpiv-todo` with the new package in the Pi package configuration. Do not run both extensions because both register `todo`.
 
 Old Stepstone and `rpiv-todo` session entries remain in old session files. The new extension ignores them. New sessions use the new snapshot type.
