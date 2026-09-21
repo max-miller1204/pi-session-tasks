@@ -6,7 +6,12 @@ export const TodoParamsSchema = Type.Object({
 	action: StringEnum(["list", "create", "update", "move", "delete", "clear"] as const),
 	id: Type.Optional(Type.String({ description: "Task ID for update, move, or delete" })),
 	title: Type.Optional(Type.String({ description: "Task title for create or update" })),
-	status: Type.Optional(StringEnum(["todo", "doing", "done"] as const)),
+	status: Type.Optional(
+		StringEnum(["todo", "doing", "done"] as const, {
+			description:
+				"New status for update only. Do not send status for create; new tasks always start as todo.",
+		}),
+	),
 	beforeId: Type.Optional(Type.String({ description: "Place the task before this task ID" })),
 	afterId: Type.Optional(Type.String({ description: "Place the task after this task ID" })),
 });
@@ -77,6 +82,7 @@ export function toTaskOperation(params: TodoParams): TaskOperation {
 
 export const TODO_PROMPT_GUIDELINES = [
 	"Use `todo` for non-trivial work with several concrete steps. Skip it for simple questions and single-step work.",
+	"Create calls use action and title, with optional beforeId or afterId. Do not send status; new tasks start as todo.",
 	"Create small, independently completable tasks before implementation, then update status as verified work progresses.",
 	"Do not mark incomplete work or work with failing checks as done.",
 	"More than one task may be doing when independent work runs in parallel.",
