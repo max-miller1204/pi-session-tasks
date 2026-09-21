@@ -41,8 +41,9 @@
 		"typecheck": "tsc --noEmit",
 		"format": "biome format --write .",
 		"lint": "biome lint --write .",
-		"check": "npm run typecheck && biome check . && npm test",
-		"pack:check": "npm pack --dry-run"
+		"check": "npm run typecheck && biome check . && npm test && npm run pack:check && npm run package:smoke",
+		"pack:check": "npm pack --dry-run",
+		"package:smoke": "node ./scripts/package-smoke.ts"
 	},
 	"peerDependencies": {
 		"@earendil-works/pi-ai": "*",
