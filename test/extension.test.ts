@@ -137,6 +137,7 @@ describe("extension registration and todo tool", () => {
 			{ action: "move", id: "a", beforeId: "b", afterId: "c" },
 			{ action: "delete", id: "a", title: "A" },
 			{ action: "clear", status: "done" },
+			{ action: "clear", unexpected: "value" },
 		]) {
 			expect(() => toTaskOperation(value as TodoParams)).toThrow();
 		}

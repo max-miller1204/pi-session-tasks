@@ -23,10 +23,9 @@ function requireField(params: TodoParams, field: Field): string {
 }
 
 function rejectUnsupported(params: TodoParams, supported: readonly Field[]): void {
-	for (const field of FIELDS) {
-		if (!supported.includes(field) && params[field] !== undefined) {
-			throw new Error(`${params.action} does not support ${field}`);
-		}
+	const supportedKeys = new Set<string>(["action", ...supported]);
+	for (const key of Object.keys(params)) {
+		if (!supportedKeys.has(key)) throw new Error(`${params.action} does not support ${key}`);
 	}
 }
 
