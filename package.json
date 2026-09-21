@@ -1,60 +1,80 @@
 {
-  "name": "pi-session-tasks",
-  "version": "0.1.0",
-  "description": "Branch-aware session tasks for Pi.",
-  "type": "module",
-  "license": "MIT",
-  "author": "Max Miller",
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/max-miller1204/pi-session-tasks.git"
-  },
-  "homepage": "https://github.com/max-miller1204/pi-session-tasks#readme",
-  "bugs": {
-    "url": "https://github.com/max-miller1204/pi-session-tasks/issues"
-  },
-  "keywords": ["pi-package", "pi-extension", "tasks", "todo", "agent"],
-  "files": ["src", "README.md", "LICENSE"],
-  "main": "./src/extension.ts",
-  "exports": {
-    ".": "./src/extension.ts",
-    "./package.json": "./package.json"
-  },
-  "pi": {
-    "extensions": ["./src/extension.ts"]
-  },
-  "scripts": {
-    "test": "vitest run",
-    "test:watch": "vitest",
-    "typecheck": "tsc --noEmit",
-    "format": "biome format --write .",
-    "lint": "biome lint --write .",
-    "check": "npm run typecheck && biome check . && npm test",
-    "pack:check": "npm pack --dry-run"
-  },
-  "peerDependencies": {
-    "@earendil-works/pi-ai": "*",
-    "@earendil-works/pi-coding-agent": "*",
-    "@earendil-works/pi-tui": "*",
-    "typebox": "*"
-  },
-  "peerDependenciesMeta": {
-    "@earendil-works/pi-ai": { "optional": true },
-    "@earendil-works/pi-coding-agent": { "optional": true },
-    "@earendil-works/pi-tui": { "optional": true },
-    "typebox": { "optional": true }
-  },
-  "devDependencies": {
-    "@biomejs/biome": "^2.5.11",
-    "@earendil-works/pi-ai": "*",
-    "@earendil-works/pi-coding-agent": "*",
-    "@earendil-works/pi-tui": "*",
-    "@types/node": "^24.0.0",
-    "typebox": "*",
-    "typescript": "^7.0.2",
-    "vitest": "^4.1.10"
-  },
-  "engines": {
-    "node": ">=20"
-  }
+	"name": "pi-session-tasks",
+	"version": "0.1.0",
+	"description": "Branch-aware session tasks for Pi.",
+	"type": "module",
+	"license": "MIT",
+	"author": "Max Miller",
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/max-miller1204/pi-session-tasks.git"
+	},
+	"homepage": "https://github.com/max-miller1204/pi-session-tasks#readme",
+	"bugs": {
+		"url": "https://github.com/max-miller1204/pi-session-tasks/issues"
+	},
+	"keywords": [
+		"pi-package",
+		"pi-extension",
+		"tasks",
+		"todo",
+		"agent"
+	],
+	"files": [
+		"src",
+		"README.md",
+		"LICENSE"
+	],
+	"main": "./src/extension.ts",
+	"exports": {
+		".": "./src/extension.ts",
+		"./package.json": "./package.json"
+	},
+	"pi": {
+		"extensions": [
+			"./src/extension.ts"
+		]
+	},
+	"scripts": {
+		"test": "vitest run",
+		"test:watch": "vitest",
+		"typecheck": "tsc --noEmit",
+		"format": "biome format --write .",
+		"lint": "biome lint --write .",
+		"check": "npm run typecheck && biome check . && npm test",
+		"pack:check": "npm pack --dry-run"
+	},
+	"peerDependencies": {
+		"@earendil-works/pi-ai": "*",
+		"@earendil-works/pi-coding-agent": "*",
+		"@earendil-works/pi-tui": "*",
+		"typebox": "*"
+	},
+	"peerDependenciesMeta": {
+		"@earendil-works/pi-ai": {
+			"optional": true
+		},
+		"@earendil-works/pi-coding-agent": {
+			"optional": true
+		},
+		"@earendil-works/pi-tui": {
+			"optional": true
+		},
+		"typebox": {
+			"optional": true
+		}
+	},
+	"devDependencies": {
+		"@biomejs/biome": "^2.5.11",
+		"@earendil-works/pi-ai": "*",
+		"@earendil-works/pi-coding-agent": "*",
+		"@earendil-works/pi-tui": "*",
+		"@types/node": "^24.0.0",
+		"typebox": "*",
+		"typescript": "^7.0.2",
+		"vitest": "^4.1.10"
+	},
+	"engines": {
+		"node": ">=20"
+	}
 }
