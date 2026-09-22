@@ -297,6 +297,23 @@ describe("session lifecycle", () => {
 		});
 	});
 
+	it("keeps tasks when a branch contains an unrelated context edit", async () => {
+		const h = harness();
+		const branch = context(
+			"edited",
+			[
+				snapshot("saved", [{ id: "a", title: "A", status: "todo" }]),
+				{ type: "context_edit", id: "edit", data: { tasks: [{ id: "wrong" }] } },
+			],
+			false,
+		);
+		await start(h, branch.ctx);
+		expect((await execute(h, branch.ctx, { action: "list" })).content[0]).toMatchObject({
+			text: expect.stringContaining("A"),
+		});
+		expect(h.appended).toEqual([]);
+	});
+
 	it.each(["resume", "fork", "clone"])("reconstructs inherited snapshots for %s", async (reason) => {
 		const h = harness();
 		const inherited = context(

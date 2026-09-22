@@ -5,6 +5,17 @@ import { join, resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 
 describe("packed package", () => {
+	it("locks direct Pi development packages to 0.87.0", () => {
+		const lock = JSON.parse(readFileSync("package-lock.json", "utf8"));
+		for (const name of [
+			"@earendil-works/pi-ai",
+			"@earendil-works/pi-coding-agent",
+			"@earendil-works/pi-tui",
+		]) {
+			expect(lock.packages[`node_modules/${name}`]?.version).toBe("0.87.0");
+		}
+	});
+
 	it("declares the minimum Node version required by Pi", () => {
 		const metadata = JSON.parse(readFileSync("package.json", "utf8"));
 		expect(metadata.engines.node).toBe(">=22.19");
