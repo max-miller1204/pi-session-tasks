@@ -19,6 +19,19 @@ describe("SessionStore", () => {
 		expect(store.getTasks()).toEqual([{ id: "b", title: "B", status: "doing" }]);
 	});
 
+	it("ignores unrelated context edits during reconstruction", () => {
+		const store = new SessionStore(
+			() => undefined,
+			() => "unused",
+		);
+		const tasks = [{ id: "a", title: "A", status: "todo" }];
+		store.reconstruct([
+			snapshot("saved", { version: 1, tasks }),
+			{ type: "context_edit", id: "edit", data: { tasks: [{ id: "wrong" }] } },
+		]);
+		expect(store.getTasks()).toEqual(tasks);
+	});
+
 	it("fails on a corrupt latest snapshot instead of restoring an earlier valid snapshot", () => {
 		const store = new SessionStore(
 			() => undefined,
